@@ -3,7 +3,7 @@ from tkinter import messagebox
 import random
 import copy
 from PIL import Image, ImageTk
-import time
+
 
 # 定数の定義
 H = 5
@@ -12,7 +12,6 @@ END_TURN = 24
 INF = float("inf")
 dx = (0, 0, -1, 1)
 dy = (-1, 1, 0, 0)
-# 自分の
 q_box = [
     "I_multiply_5",
     "I_multiply_2",
@@ -54,7 +53,6 @@ class NumberCollectGame:
         self.turn = 0
         # プレイヤーが先手: 0 or 後手: 1
         self.player_turn = random.randrange(2)
-        self.player_name = [p1_name, p2_name]
 
         # 初期位置をランダムに決定
         chara_1_x = random.randrange(H)
@@ -63,8 +61,10 @@ class NumberCollectGame:
         chara_2 = Character(H - chara_1_x - 1, W - chara_1_y - 1, 0)
         if self.player_turn == 0:
             self.characters = [chara_1, chara_2]
+            self.player_name = [p1_name, p2_name]
         else:
             self.characters = [chara_2, chara_1]
+            self.player_name = [p2_name, p1_name]
 
         # 盤面上の数字をランダムに決定
         self.points = [[0] * W for _ in range(H)]
@@ -121,7 +121,7 @@ class NumberCollectGame:
         if point == "?":
             if search:
                 if self.characters[0].game_score < self.characters[1].game_score:
-                    character.game_score += 15
+                    character.game_score += 11
                 else:
                     character.game_score += 0
             else:
@@ -282,20 +282,12 @@ class NumberCollectGame:
     def checkWinigStatus(self):
         if self.isDone():
             winig_status = self.getWiningStatus()
-            if self.player_turn == (self.turn) % 2:
-                if winig_status == "WIN":
-                    return "1"
-                elif winig_status == "LOSE":
-                    return "-1"
-                elif winig_status == "DRAW":
-                    return "0"
-            else:
-                if winig_status == "WIN":
-                    return "-1"
-                elif winig_status == "LOSE":
-                    return "1"
-                elif winig_status == "DRAW":
-                    return "0"
+            if winig_status == "WIN":
+                return 0
+            elif winig_status == "LOSE":
+                return 1
+            elif winig_status == "DRAW":
+                return 2
         else:
             return None
 
@@ -390,15 +382,154 @@ def testFirstPlayerWinRate(game_num: int = 100):
 
 class NumberCollectGameGUI:
     def __init__(self):
-        self.setupGUI()
+        self.show_start_menu_window()
+
+    def show_start_menu_window(self):
+        start_menu_window = tk.Tk()
+        start_menu_window.title("スタートメニュー")
+        start_menu_window.geometry("600x450")
+        start_menu_window.geometry("+100+100")
+        start_menu_window.grab_set()
+        start_menu_window.protocol("WM_DELETE_WINDOW", self.close)
+
+        rule_button = tk.Button(
+            start_menu_window,
+            text="遊び方・ルール",
+            command=lambda: [start_menu_window.destroy(), self.show_how_to_play()],
+            width=28,
+            font=("Helvetica", 24),
+        )
+        rule_button.pack(pady=20)
+
+        solo_play_button = tk.Button(
+            start_menu_window,
+            text="一人で遊ぶ（NPC対戦）",
+            command=lambda: [
+                start_menu_window.destroy(),
+                self.set_mode(1),
+                self.setupGUI(),
+            ],
+            width=28,
+            font=("Helvetica", 24),
+        )
+        solo_play_button.pack(pady=20)
+
+        pair_play_button = tk.Button(
+            start_menu_window,
+            text="二人で遊ぶ（近くの人と対戦）",
+            command=lambda: [
+                start_menu_window.destroy(),
+                self.set_mode(2),
+                self.setupGUI(),
+            ],
+            width=28,
+            font=("Helvetica", 24),
+        )
+        pair_play_button.pack(pady=20)
+
+        exit_button = tk.Button(
+            start_menu_window,
+            text="終了する",
+            command=start_menu_window.destroy,
+            width=28,
+            font=("Helvetica", 24),
+        )
+        exit_button.pack(pady=20)
+        start_menu_window.mainloop()
+
+    def set_mode(self, mode: int):
+        self.mode = mode
+
+    def show_how_to_play(self):
+        how_to_play_window = tk.Tk()
+        how_to_play_window.title("遊び方・ルール")
+        how_to_play_window.state("zoomed")
+        how_to_play_window.grab_set()
+
+        content_frame = tk.Frame(how_to_play_window)
+        content_frame.pack(fill="both", expand=True)
+
+        text_frame = tk.Frame(content_frame)
+        text_frame.pack(side="left", fill="both", expand=True, padx=10, pady=5)
+
+        rules_text = """
+        【数字集めゲームの遊び方】
+
+        1. ゲームの目的:
+            数字集めゲームは、盤面上の数字を集めてスコアを競うゲームです。
+            最終的に高いスコアを持っているプレイヤーが勝利します。
+
+        2. 基本ルール:
+            ・ プレイヤーは順番に移動し、止まったマスの数字をスコアに加えます。
+            ・ ターンが終了すると、もう一方のプレイヤーに交代します。
+            ・ ゲームは24ターンで終了します。
+
+        3. 特殊マス（はてなマス）:
+            ・ 盤面には「?」のマスがあります。このマスに止まると、特別なイベントが発生します。
+            ・ イベントにはスコアの増減や交換など、様々な効果があります。
+
+        4. 操作方法:
+            ・ プレイヤーはマスをクリックして移動します。
+            ・ 移動先は上下左右のマスに限られます。
+
+        5. モード説明:
+            ・ 一人で遊ぶ（NPC対戦）:
+                コンピュータ（NPC）と対戦するモードです。
+                NPCの動きに合わせて、自分のスコアを高める戦略を練りましょう。
+            
+            ・ 二人で遊ぶ（近くの人と対戦）:
+                近くの人と対戦するモードです。交互に操作して、スコアを競い合いましょう。
+
+        6. 勝利条件:
+            ・ 24ターン終了時に、スコアが高いプレイヤーが勝利します。
+            ・ スコアが同じ場合は引き分けです。
+        """
+
+        rules_label = tk.Label(
+            text_frame, text=rules_text, font=("Helvetica", 18), justify="left"
+        )
+        rules_label.pack(side="top", fill="both", expand=True)
+
+        image_frame = tk.Frame(content_frame)
+        image_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+        # 画像を読み込み、リサイズする
+        example_image = Image.open(
+            "sample.png"
+        )  # ここに実際の画像ファイル名を入れてください
+        example_image = example_image.resize((700, 700))
+        example_photo = ImageTk.PhotoImage(example_image)
+
+        image_label = tk.Label(image_frame, image=example_photo)
+        image_label.image = example_photo
+        image_label.pack(side="top", fill="both", expand=True)
+
+        close_button = tk.Button(
+            how_to_play_window,
+            text="閉じる",
+            command=lambda: [
+                how_to_play_window.destroy(),
+                self.show_start_menu_window(),
+            ],
+            font=("Helvetica", 24),
+            width=10,
+        )
+        close_button.pack()
 
     def setupGUI(self):
         seed = random.randrange(100000)
-        self.game = NumberCollectGame(seed=seed)
+        if self.mode == 1:
+            self.palyer_name = ["プレイヤー", "NPC"]
+        else:
+            self.palyer_name = ["プレイヤー1", "プレイヤー2"]
+
+        self.game = NumberCollectGame(
+            seed=seed, p1_name=self.palyer_name[0], p2_name=self.palyer_name[1]
+        )
 
         self.root = tk.Tk()
-        self.root.title("Number Collect Game")
-        self.root.geometry("900x1000")
+        self.root.title("数字集めゲーム")
+        # self.root.geometry("900x1000")
         self.root.state("zoomed")
         self.readImage()
         self.initialize_turn_frame()
@@ -407,9 +538,45 @@ class NumberCollectGameGUI:
         self.clicked = None
 
         self.change_button_states_Disabled()
-        self.root.after(1000, self.continue_game)
-        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.show_first_second_spin()
+        self.root.after(500, self.continue_game)
+        # self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.root.mainloop()
+
+    def show_first_second_spin(self):
+        spin_window = tk.Toplevel(self.root)
+        spin_window.transient(self.root)
+        spin_window.grab_set()
+        spin_window.protocol("WM_DELETE_WINDOW", self.close)
+        spin_window.title("先攻後攻ルーレット")
+        spin_window.geometry("300x200")
+        spin_window.geometry(f"+0+200")
+        spin_label = tk.Label(spin_window, text="", font=("Helvetica", 20))
+        spin_label.pack(pady=20)
+        roop = random.randrange(2, 4)
+        close_button = tk.Button(
+            spin_window,
+            text="閉じる",
+            command=spin_window.destroy,
+            width=15,
+            font=("Helvetica", 20),
+        )
+        fin = roop * 10 + self.game.player_turn
+        self.spin_id = None
+        f_s = [f"先攻: {self.palyer_name[0]}", f"先攻: {self.palyer_name[1]}"]
+
+        def f(idx):
+            spin_label["text"] = f_s[idx % 2]
+            spin_window.update()
+            self.root.update()
+            if idx == fin:
+                self.root.after_cancel(self.spin_id)
+                close_button.pack(pady=20)
+            else:
+                self.spin_id = self.root.after(int(100), lambda: f(idx + 1))
+
+        f(0)
+        self.root.wait_window(spin_window)
 
     def close(self):
         pass
@@ -448,7 +615,9 @@ class NumberCollectGameGUI:
         self.turn_frame = tk.Frame(self.root)
         remaining_turns_text = f"残りのターン: {END_TURN}"
         turn_text = (
-            "プレイヤーのターン" if self.game.player_turn == 0 else "NPCのターン"
+            f"{self.palyer_name[0]}のターン"
+            if self.game.player_turn == 0
+            else f"{self.palyer_name[1]}のターン"
         )
 
         self.remaining_turns_label = tk.Label(
@@ -466,14 +635,14 @@ class NumberCollectGameGUI:
         self.score_frame = tk.Frame(self.root)
         self.player_score_label = tk.Label(
             self.score_frame,
-            text="プレイヤーのスコア\n0",
+            text=f"{self.palyer_name[0]}のスコア\n0",
             bg="#FFCCCC",
             font=("Helvetica", 18),
             width=25,
         )
         self.npc_score_label = tk.Label(
             self.score_frame,
-            text="NPCのスコア\n0",
+            text=f"{self.palyer_name[1]}のスコア\n0",
             bg="#CCDDFF",
             font=("Helvetica", 18),
             width=25,
@@ -533,7 +702,7 @@ class NumberCollectGameGUI:
                 self.board_buttons[i][j].config(state=tk.DISABLED)
 
     def change_button_status_Normal(self):
-        if self.game.turn % 2 == self.game.player_turn:
+        if self.mode == 2 or self.game.turn % 2 == self.game.player_turn:
             legal_acitons = self.game.legalActions()
             x = self.game.characters[0].x
             y = self.game.characters[0].y
@@ -543,11 +712,12 @@ class NumberCollectGameGUI:
                 )
 
     def continue_game(self):
-        """NPCの手を含めてゲームを続行し、ゲームの終了をチェックする"""
-        if self.game.turn % 2 == self.game.player_turn:
+        """ゲームを続行し、ゲームの終了をチェックする"""
+        if self.mode == 2 or self.game.turn % 2 == self.game.player_turn:
             if self.clicked != None:
                 self.change_button_states_Disabled()
                 q_index = self.game.playUser(self.clicked)
+                self.clicked = None
                 self.move_pawn()
                 self.root.update()
                 if q_index != None:
@@ -558,6 +728,7 @@ class NumberCollectGameGUI:
                 self.root.update()
             else:
                 self.change_button_status_Normal()
+                self.clicked = None
 
         else:
             q_index = self.game.playNPC()
@@ -573,16 +744,20 @@ class NumberCollectGameGUI:
             # print(self.game)
 
         result = self.game.checkWinigStatus()
-        if result:
+        if result != None:
             self.root.after_cancel(self.id_)
-            if result == "1":
-                self.show_result("プレイヤーの勝利です。")
-            elif result == "-1":
-                self.show_result("プレイヤーの負けです。")
+            if result == 0:
+                self.show_result(
+                    f"{self.palyer_name[self.game.player_turn]}の勝利です。"
+                )
+            elif result == 1:
+                self.show_result(
+                    f"{self.palyer_name[self.game.player_turn ^ 1]}の勝利です。"
+                )
             else:
                 self.show_result("引き分けです。")
         else:
-            if self.game.turn % 2 == self.game.player_turn:
+            if self.mode == 2 or self.game.turn % 2 == self.game.player_turn:
                 self.id_ = self.root.after(100, self.continue_game)
             else:
                 self.id_ = self.root.after(1000, self.continue_game)
@@ -598,17 +773,17 @@ class NumberCollectGameGUI:
         spin_window.grab_set()
         spin_window.protocol("WM_DELETE_WINDOW", self.close)
         spin_window.title("はてなマスルーレット")
-        spin_window.geometry("550x200")
+        spin_window.geometry("500x200")
         spin_window.geometry(f"+0+200")
-        spin_label = tk.Label(spin_window, text="", font=("Helvetica", 18))
-        spin_label.pack()
+        spin_label = tk.Label(spin_window, text="", font=("Helvetica", 20))
+        spin_label.pack(pady=20)
         roop = random.randrange(2, 4)
         close_button = tk.Button(
             spin_window,
             text="閉じる",
             command=spin_window.destroy,
-            width=15,
-            font=("Helvetica", 14),
+            width=10,
+            font=("Helvetica", 20),
         )
         fin = roop * len(q_box) + tareget
         self.spin_id = None
@@ -622,7 +797,7 @@ class NumberCollectGameGUI:
             self.root.update()
             if idx == fin:
                 self.root.after_cancel(self.spin_id)
-                close_button.pack()
+                close_button.pack(pady=20)
             else:
                 self.spin_id = self.root.after(int(100), lambda: f(idx + 1))
 
@@ -636,7 +811,7 @@ class NumberCollectGameGUI:
         options_window.grab_set()
         options_window.protocol("WM_DELETE_WINDOW", self.close)
         options_window.title("メニュー")
-        options_window.geometry("250x200")
+        options_window.geometry("300x200")
         options_window.geometry(f"+0+200")
 
         retry_button = tk.Button(
@@ -648,18 +823,18 @@ class NumberCollectGameGUI:
                 self.setupGUI(),
             ],
             width=15,
-            font=("Helvetica", 14),
+            font=("Helvetica", 20),
         )
-        retry_button.pack(pady=5)
+        retry_button.pack(pady=20)
 
         exit_button = tk.Button(
             options_window,
             text="終了する",
             command=self.root.destroy,
             width=15,
-            font=("Helvetica", 14),
+            font=("Helvetica", 20),
         )
-        exit_button.pack(pady=5)
+        exit_button.pack(pady=20)
 
     def move_pawn(self):
         for i in range(H):
@@ -692,13 +867,95 @@ class NumberCollectGameGUI:
 
         self.remaining_turns_label["text"] = f"残りターン: {END_TURN - self.game.turn}"
         self.player_score_label["text"] = (
-            f"プレイヤーのスコア\n{self.game.characters[(self.game.player_turn + self.game.turn) % 2].game_score}"
+            f"{self.palyer_name[0]}のスコア\n{self.game.characters[(self.game.player_turn + self.game.turn) % 2].game_score}"
         )
         self.npc_score_label["text"] = (
-            f"NPCのスコア\n{self.game.characters[(self.game.player_turn + self.game.turn + 1) % 2].game_score}"
+            f"{self.palyer_name[1]}のスコア\n{self.game.characters[(self.game.player_turn + self.game.turn + 1) % 2].game_score}"
         )
-        turn_text = "プレイヤーのターン" if self.game.turn % 2 == 1 else "NPCのターン"
+        turn_text = (
+            f"{self.palyer_name[self.game.player_turn]}のターン"
+            if self.game.turn % 2 == 0
+            else f"{self.palyer_name[1 ^ self.game.player_turn]}のターン"
+        )
         self.turn_label["text"] = turn_text
 
 
-game_GUI = NumberCollectGameGUI()
+def show_how_to_play():
+    how_to_play_window = tk.Tk()
+    how_to_play_window.title("遊び方・ルール")
+    how_to_play_window.state("zoomed")
+    how_to_play_window.grab_set()
+
+    content_frame = tk.Frame(how_to_play_window)
+    content_frame.pack(fill="both", expand=True)
+
+    text_frame = tk.Frame(content_frame)
+    text_frame.pack(side="left", fill="both", expand=True, padx=10, pady=5)
+
+    rules_text = """
+    【数字集めゲームの遊び方】
+
+    1. ゲームの目的:
+        数字集めゲームは、盤面上の数字を集めてスコアを競うゲームです。
+        最終的に高いスコアを持っているプレイヤーが勝利します。
+
+    2. 基本ルール:
+        ・ プレイヤーは順番に移動し、止まったマスの数字をスコアに加えます。
+        ・ ターンが終了すると、もう一方のプレイヤーに交代します。
+        ・ ゲームは24ターンで終了します。
+
+    3. 特殊マス（はてなマス）:
+        ・ 盤面には「?」のマスがあります。このマスに止まると、特別なイベントが発生します。
+        ・ イベントにはスコアの増減や交換など、様々な効果があります。
+
+    4. 操作方法:
+        ・ プレイヤーはマスをクリックして移動します。
+        ・ 移動先は上下左右のマスに限られます。
+
+    5. モード説明:
+        ・ 一人で遊ぶ（NPC対戦）:
+            コンピュータ（NPC）と対戦するモードです。
+            NPCの動きに合わせて、自分のスコアを高める戦略を練りましょう。
+        
+        ・ 二人で遊ぶ（近くの人と対戦）:
+            近くの人と対戦するモードです。交互に操作して、スコアを競い合いましょう。
+
+    6. 勝利条件:
+        ・ 24ターン終了時に、スコアが高いプレイヤーが勝利します。
+        ・ スコアが同じ場合は引き分けです。
+    """
+
+    rules_label = tk.Label(
+        text_frame, text=rules_text, font=("Helvetica", 18), justify="left"
+    )
+    rules_label.pack(side="top", fill="both", expand=True)
+
+    image_frame = tk.Frame(content_frame)
+    image_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+    # 画像を読み込み、リサイズする
+    example_image = Image.open(
+        "sample.png"
+    )  # ここに実際の画像ファイル名を入れてください
+    example_image = example_image.resize((700, 700))
+    example_photo = ImageTk.PhotoImage(example_image)
+
+    image_label = tk.Label(image_frame, image=example_photo)
+    image_label.image = example_photo
+    image_label.pack(side="top", fill="both", expand=True)
+
+    close_button = tk.Button(
+        how_to_play_window,
+        text="閉じる",
+        command=lambda: [
+            how_to_play_window.destroy(),
+        ],
+        font=("Helvetica", 24),
+        width=10,
+    )
+    close_button.pack()
+    how_to_play_window.mainloop()
+
+
+def main():
+    game_GUI = NumberCollectGameGUI()
